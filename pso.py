@@ -32,7 +32,7 @@ particles = []
 n_particles = 10
 
 n_iterations = 1000
-interval = 50
+interval = 30
 
 g_value = 1000000
 g_position = np.array([low + 2*high*np.random.random(), low + 2*high*np.random.random()])
@@ -48,6 +48,18 @@ def energy(pos):
 	# paraboloid = pos[0]**2 + pos[1]**2
 	rastrigin = 20 + pos[0]**2 + pos[1]**2 - 10*np.cos(2*np.pi*pos[0]) - 10*np.cos(2*np.pi*pos[1])
 	return rastrigin
+
+def update_velocity(particle):
+	global g_value, g_position
+	# new_velocity =	0.9*particle.velocity + \
+	# 				0.01*(particle.b_position - particle.position[-1]) + \
+	# 				0.09*(g_position - particle.position[-1])
+
+	new_velocity =	0.9*particle.velocity + \
+				0.01*(g_value/(particle.b_value + g_value))*(particle.b_position - particle.position[-1]) + \
+				0.09*(particle.b_value/(particle.b_value + g_value))*(g_position - particle.position[-1])
+
+	return new_velocity
 
 def init():
     return tuple(lines)
@@ -69,9 +81,7 @@ def animate(i):
 			g_position = particles[k].position[-1]
 
 		# calculate new velocity
-		particles[k].velocity = 0.9*particles[k].velocity + \
-								0.01*(particles[k].b_position - particles[k].position[-1]) + \
-								0.09*(g_position - particles[k].position[-1])			
+		particles[k].velocity = update_velocity(particles[k])		
 
 		# move
 		new_particle_position = particles[k].position[-1] + particles[k].velocity
@@ -82,10 +92,10 @@ def animate(i):
 		a = particles[k].position[:,0]
 		b = particles[k].position[:,1]
 
-		print("X:",a)
-		print("Y:",b)
 
 		lines[k].set_data(a,b)
+	
+	print("Frame:", i, "G_best:", g_value, "G_pos:", g_position)
 
 	return tuple(lines)
 
