@@ -1,3 +1,4 @@
+import sys
 import math
 import numpy as np
 from matplotlib import pyplot as plt
@@ -20,28 +21,29 @@ ymin, ymax, ystep = low, high, 0.01
 x, y = np.meshgrid(np.arange(xmin, xmax + xstep, xstep), np.arange(ymin, ymax + ystep, ystep))
 z = f(x, y)
 
-
-
-fig = plt.figure()
-ax = plt.axes(xlim=(low, high), ylim=(low, high))
-ax.contour(x, y, z, levels=np.linspace(0, 200, 30), norm=LogNorm(), cmap=plt.cm.jet)
-
 lines = []
 particles = []
 
 n_particles = 10
 
-n_iterations = 1000
-interval = 30
+n_iterations = 130
+interval = 0
 
 g_value = 1000000
 g_position = np.array([low + 2*high*np.random.random(), low + 2*high*np.random.random()])
 k = 0
 w1, w2 = 0.5, 0.5
 
-for i in range(n_particles):
-	line_i, = ax.plot([], [], lw=4)
-	lines.append(line_i)
+
+if len(sys.argv) > 1:
+	if sys.argv[1] == "-visual":
+		fig = plt.figure()
+		ax = plt.axes(xlim=(low, high), ylim=(low, high))
+		ax.contour(x, y, z, levels=np.linspace(0, 200, 30), norm=LogNorm(), cmap=plt.cm.jet)
+		
+		for i in range(n_particles):
+			line_i, = ax.plot([], [], lw=4)
+			lines.append(line_i)
 
 
 def energy(pos):
@@ -51,13 +53,13 @@ def energy(pos):
 
 def update_velocity(particle):
 	global g_value, g_position
-	# new_velocity =	0.9*particle.velocity + \
-	# 				0.01*(particle.b_position - particle.position[-1]) + \
-	# 				0.09*(g_position - particle.position[-1])
+	new_velocity =	0.92*particle.velocity + \
+					0.05*(particle.b_position - particle.position[-1]) + \
+					0.09*(g_position - particle.position[-1])
 
 	new_velocity =	0.9*particle.velocity + \
-				0.01*(g_value/(particle.b_value + g_value))*(particle.b_position - particle.position[-1]) + \
-				0.09*(particle.b_value/(particle.b_value + g_value))*(g_position - particle.position[-1])
+				0.02*(g_value/(particle.b_value + g_value))*(particle.b_position - particle.position[-1]) + \
+				0.1*(particle.b_value/(particle.b_value + g_value))*(g_position - particle.position[-1])
 
 	return new_velocity
 
@@ -92,10 +94,12 @@ def animate(i):
 		a = particles[k].position[:,0]
 		b = particles[k].position[:,1]
 
-
-		lines[k].set_data(a,b)
+		if len(sys.argv) > 1 and sys.argv[1] == "-visual":
+			lines[k].set_data(a,b)
 	
-	print("Frame:", i, "G_best:", g_value, "G_pos:", g_position)
+	if i == (n_iterations - 1):
+		print("Iterations:", i+1, "G_best:", g_value, "G_pos:", g_position)
+		exit()
 
 	return tuple(lines)
 
@@ -123,9 +127,19 @@ if __name__ == "__main__":
 	for i in range(n_particles):
 		particles.append(Particle(i))
 
-	anim = FuncAnimation(fig, animate, init_func=init,
-                               frames=n_iterations, interval=interval, blit=True)
+	j = 0
 
-	mng = plt.get_current_fig_manager()
-	mng.resize(*mng.window.maxsize())
-	plt.show()
+	if len(sys.argv) > 1:
+		if sys.argv[1] == "-visual":
+			anim = FuncAnimation(fig, animate, init_func=init,
+		                               frames=n_iterations, interval=interval, blit=True)
+
+			mng = plt.get_current_fig_manager()
+			mng.resize(*mng.window.maxsize())
+			plt.show()
+
+	else:
+		while j<n_iterations:
+			animate(j)
+			j+=1
+
