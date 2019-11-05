@@ -26,13 +26,12 @@ particles = []
 
 n_particles = 10
 
-n_iterations = 130
+n_iterations = 350
 interval = 0
 
 g_value = 1000000
 g_position = np.array([low + 2*high*np.random.random(), low + 2*high*np.random.random()])
-k = 0
-w1, w2 = 0.5, 0.5
+w0, w1, w2 = 0.92, 0.11, 0.84
 
 
 if len(sys.argv) > 1:
@@ -51,22 +50,22 @@ def energy(pos):
 	rastrigin = 20 + pos[0]**2 + pos[1]**2 - 10*np.cos(2*np.pi*pos[0]) - 10*np.cos(2*np.pi*pos[1])
 	return rastrigin
 
-def update_velocity(particle):
+def update_velocity(particle, w0, w1, w2):
 	global g_value, g_position
-	new_velocity =	0.92*particle.velocity + \
-					0.05*(particle.b_position - particle.position[-1]) + \
-					0.09*(g_position - particle.position[-1])
+	new_velocity =	w0*particle.velocity + \
+					w1*(particle.b_position - particle.position[-1]) + \
+					w2*(g_position - particle.position[-1])
 
-	new_velocity =	0.9*particle.velocity + \
-				0.02*(g_value/(particle.b_value + g_value))*(particle.b_position - particle.position[-1]) + \
-				0.1*(particle.b_value/(particle.b_value + g_value))*(g_position - particle.position[-1])
+	# new_velocity =	0.9*particle.velocity + \
+	# 			0.02*(g_value/(particle.b_value + g_value))*(particle.b_position - particle.position[-1]) + \
+	# 			0.1*(particle.b_value/(particle.b_value + g_value))*(g_position - particle.position[-1])
 
 	return new_velocity
 
 def init():
     return tuple(lines)
 
-def animate(i):
+def animate(i, fargs):
 	global g_value, g_position
 	for k in range(n_particles):	
 
@@ -83,7 +82,7 @@ def animate(i):
 			g_position = particles[k].position[-1]
 
 		# calculate new velocity
-		particles[k].velocity = update_velocity(particles[k])		
+		particles[k].velocity = update_velocity(particles[k], w0, fargs[0], fargs[1])		
 
 		# move
 		new_particle_position = particles[k].position[-1] + particles[k].velocity
@@ -97,9 +96,7 @@ def animate(i):
 		if len(sys.argv) > 1 and sys.argv[1] == "-visual":
 			lines[k].set_data(a,b)
 	
-	if i == (n_iterations - 1):
-		print("Iterations:", i+1, "G_best:", g_value, "G_pos:", g_position)
-		exit()
+	# print("Iterations:", i+1, "G_best:", g_value, "G_pos:", g_position, "W:", fargs)
 
 	return tuple(lines)
 
@@ -124,22 +121,44 @@ class Particle:
 
 if __name__ == "__main__":
 
-	for i in range(n_particles):
-		particles.append(Particle(i))
+	for k in range(n_particles):
+		particles.append(Particle(k))
 
 	j = 0
 
 	if len(sys.argv) > 1:
 		if sys.argv[1] == "-visual":
 			anim = FuncAnimation(fig, animate, init_func=init,
-		                               frames=n_iterations, interval=interval, blit=True)
+		                               frames=n_iterations, interval=interval, blit=True, fargs=((w1,w2),))
 
 			mng = plt.get_current_fig_manager()
 			mng.resize(*mng.window.maxsize())
 			plt.show()
 
 	else:
-		while j<n_iterations:
-			animate(j)
-			j+=1
+		g_min = 100000
+		g_min_weights = (0,0)
+		f = open("meta_function.txt", "w")
+		for a in range(100):
+			for b in range(100):
+				g_avg = 0
+				for trial in range(20):
+					particles = []
+					for k in range(n_particles):
+						particles.append(Particle(k))
 
+					g_value = 1000000
+					g_position = np.array([low + 2*high*np.random.random(), low + 2*high*np.random.random()])
+
+					for j in range(n_iterations):
+						animate(j, (a*0.01,b*0.01))
+						j+=1
+
+					g_avg += g_value
+				g_avg /= 10
+				if g_avg < g_min:
+					g_min = g_avg
+					g_min_weights = a*0.01, b*0.01
+					# print("Trial:", trial, "G_best:", g_value, "G_pos:", g_position, "W:", (a,b))
+				print("Trial:", trial, "Iterations:", n_iterations, "G_avg:", g_avg, "G_min", g_min, "W:", (a*0.01,b*0.01), "MinW:",g_min_weights)
+				f.write("{},{},{}\n".format(a*0.01, b*0.01, g_avg))
