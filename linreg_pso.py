@@ -20,10 +20,10 @@ y_lim = (-30,30)
 low = -10
 high = 10
 
-init_low_x = 0
-init_high_x = 100
+init_low_x = 40
+init_high_x = 50
 init_low_y = 0
-init_high_y = 100
+init_high_y = 20
 
 
 # print(rand1)
@@ -57,31 +57,7 @@ error = []
 
 
 
-w0, w1, w2 = 0.9, 0.3, 0.7
 
-fig = plt.figure(figsize=(35,15))
-
-# Plot 1: Contour and PSO particle animation
-ax1 = subplot2grid((1,2),(0,0))
-# ax1.grid(True)
-# ax1.contour(x, y, z, levels=np.linspace(0, 200, 30), norm=LogNorm(), cmap=plt.cm.jet)
-for i in range(n_particles):
-	line_i, = ax1.plot([], [], lw=1)
-	lines.append(line_i)
-
-# Plot 2: Overall loss function plot vs time
-ax2 = subplot2grid((1,2),(0,1))
-line2, = ax2.plot([],[],lw=3)
-# lines.append(line2)
-# print(len(lines))
-ax1.set_xlim(0,100)
-ax1.set_ylim(0,100)
-
-ax2.set_xlim(0,400)
-ax2.set_ylim(0,200)
-
-ax1.grid(True)
-ax2.grid(True)
 
 
 def energy(pos):
@@ -107,7 +83,7 @@ class Particle:
 	def __init__(self, id):
 		self.id = id
 		self.position = np.array([[init_low_x+ 2*init_high_x*np.random.random(), init_low_y + 2*init_high_y*np.random.random()]])
-		self.velocity = np.array([2*np.random.random(), 2*np.random.random()])
+		self.velocity = 0.01*np.array([-1 + 2*np.random.random(), -1 + 2*np.random.random()])
 		self.b_value = math.inf
 		self.b_position = self.position[-1]
 
@@ -125,7 +101,8 @@ def generate_data(n,mu,sigma,M,C):
 	return model + rand
 
 def update(i):
-	global data, g_value, g_position, error, line2, lines
+	global data, g_value, g_position, error, line2, line3, lines
+	print(i, g_position, g_value)
 	for k in range(n_particles):	
 
 		# Calculate target value
@@ -161,17 +138,50 @@ def update(i):
 	error.append(g_value)
 	# print(time, np.asarray(error))
 	line2.set_data(time, np.asarray(error))
-	print(i, g_position, g_value)
 
-	return lines[0], line2
+	line3.set_data(np.array([0, 500]), np.array([g_position[1], g_position[0]*500+g_position[1]]))
+
+	return lines[0], line2, line3
 
 
 
 if __name__ == "__main__":
+	
+	w0, w1, w2 = 0.9, 0.3, 0.8
 
-	n,mu,sigma,M,C = 100,0,25,50,20
+	n,mu,sigma,M,C = 100,0,100,25,120
+
 	X = np.linspace(1,n,n)
 	data = generate_data(n,mu,sigma,M,C)
+
+	fig = plt.figure(figsize=(35,15))
+
+	# Plot 1: Contour and PSO particle animation
+	ax1 = subplot2grid((2,2),(0,0),rowspan=2)
+	# ax1.grid(True)
+	# ax1.contour(x, y, z, levels=np.linspace(0, 200, 30), norm=LogNorm(), cmap=plt.cm.jet)
+	for i in range(n_particles):
+		line_i, = ax1.plot([], [], lw=1)
+		lines.append(line_i)
+
+	# Plot 2: Overall loss function plot vs time
+	ax2 = subplot2grid((2,2),(0,1))
+	line2, = ax2.plot([],[],lw=3)
+
+	# Plot the linear regression in action with data and the model
+	ax3 = subplot2grid((2,2),(1,1))
+	line3, = ax3.plot([],[],lw=3)
+	ax3.scatter(np.linspace(1,n,n), data)
+	# lines.append(line2)
+	# print(len(lines))
+	ax1.set_xlim(0,100)
+	ax1.set_ylim(0,200)
+
+	ax2.set_xlim(0,400)
+	ax2.set_ylim(0,500)
+
+	ax1.grid(True)
+	ax2.grid(True)
 
 	for k in range(n_particles):
 		particles.append(Particle(k))
