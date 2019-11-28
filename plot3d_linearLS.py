@@ -51,6 +51,10 @@ ax = fig.add_subplot(1,2,2)
 ax.plot(X,data,'bo')
 ax.grid(True)
 
+ax.set_xlabel("M-axis")
+ax.set_ylabel("C-axis")
+
+# ax.set_zlabel("Total Residual")
 
 
 
