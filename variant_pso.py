@@ -29,8 +29,8 @@ init_high_y = 50
 # print(rand1)
 n_particles = 9
 
-n_iterations = 1000
-interval = 30
+n_iterations = 300
+interval = 10
 
 pdots_x = [0 for i in range(n_particles)]
 pdots_y = [0 for i in range(n_particles)]
@@ -95,7 +95,11 @@ def update(i):
 		particles[k].velocity = update_velocity(particles[k], w0, w1, w2)		
 
 		# move
-		new_particle_position = particles[k].position[-1] + particles[k].velocity
+		if k%3 == 0:
+			new_particle_position = 2.0*particles[k+1].position[-1] + -2.0*particles[k+2].position[-1]
+		else:
+			new_particle_position = particles[k].position[-1] + particles[k].velocity
+
 
 		# append new position
 		particles[k].position = np.vstack([particles[k].position, new_particle_position])
@@ -114,7 +118,7 @@ def update(i):
 		# pdots.set_data(np.asarray(pdots_x), np.asarray(pdots_y))
 
 		if k%3 == 0:
-			print(len(guides))
+			guides[3+int(k/3)].set_data([particles[k].position[-1,0], particles[k+1].position[-1,0]],[particles[k].position[-1,1],particles[k+1].position[-1,1]])
 			guides[int(k/3)].set_data([particles[k+1].position[-1,0], particles[k+2].position[-1,0]],[particles[k+1].position[-1,1],particles[k+2].position[-1,1]])
 
 	# lines[-1].set_data(time, error)
@@ -124,18 +128,20 @@ def update(i):
 	# print(time, np.asarray(error))
 	line2.set_data(time, np.asarray(error))
 
+	# if i+1 == n_iterations:
+	# 	sys.exit()
+
 	return lines[0], line2, tuple(guides), pdots
 
 
 
 if __name__ == "__main__":
 	
-	best = (0.93, 0.11, 0.8)
+	best = (0.9, 0.11, 0.8)
 	demo = (0.95, 0.001, 0.05)
 	w0, w1, w2 = demo
+	m = 9
 
-	circle1 = plt.Circle((0, 0), 0.2, color='r')
-	circle2 = plt.Circle((0.5, 0.5), 0.2, color='blue')
 
 	fig = plt.figure(figsize=(35,15))
 
@@ -157,7 +163,11 @@ if __name__ == "__main__":
 		lines.append(line_i)
 
 	for i in range(int(n_particles/3)):
-		line_i, = ax1.plot([], [], lw=6)
+		line_i, = ax1.plot([], [], lw=6, color='green')
+		guides.append(line_i) 
+
+	for i in range(3+int(n_particles/3)):
+		line_i, = ax1.plot([], [], lw=6, color='yellow')
 		guides.append(line_i) 
 
 	# Plot 2: Overall loss function plot vs time
@@ -184,7 +194,7 @@ if __name__ == "__main__":
 		particles.append(Particle(k))
 
 
-	simulation = FuncAnimation(fig, update, blit=False, frames=2000, interval=10, repeat=False)
+	simulation = FuncAnimation(fig, update, blit=False, frames=n_iterations, interval=interval, repeat=False)
 	
 	# mng = plt.get_current_fig_manager()
 	# mng.resize(*mng.window.maxsize())

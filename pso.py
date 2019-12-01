@@ -26,17 +26,19 @@ particles = []
 
 n_particles = 10
 
-n_iterations = 350
+n_iterations = 300
 interval = 0
 
 g_value = 1000000
 g_position = np.array([low + 2*high*np.random.random(), low + 2*high*np.random.random()])
-w0, w1, w2 = 0.92, 0.11, 0.84
+best = (0.9, 0.11, 0.8)
+demo = (0.95, 0.001, 0.05)
+w0, w1, w2 = demo
 
 
 if len(sys.argv) > 1:
 	if sys.argv[1] == "-visual":
-		fig = plt.figure()
+		fig = plt.figure(figsize=(35,15))
 		ax = plt.axes(xlim=(low, high), ylim=(low, high))
 		ax.contour(x, y, z, levels=np.linspace(0, 200, 30), norm=LogNorm(), cmap=plt.cm.jet)
 		
@@ -67,6 +69,7 @@ def init():
 
 def animate(i, fargs):
 	global g_value, g_position
+	print(i, g_position, g_value)
 	for k in range(n_particles):	
 
 		# Calculate target value
@@ -97,6 +100,9 @@ def animate(i, fargs):
 			lines[k].set_data(a,b)
 	
 	# print("Iterations:", i+1, "G_best:", g_value, "G_pos:", g_position, "W:", fargs)
+
+	if i+1 == n_iterations:
+		sys.exit()
 
 	return tuple(lines)
 
@@ -131,8 +137,7 @@ if __name__ == "__main__":
 			anim = FuncAnimation(fig, animate, init_func=init,
 		                               frames=n_iterations, interval=interval, blit=True, fargs=((w1,w2),))
 
-			mng = plt.get_current_fig_manager()
-			mng.resize(*mng.window.maxsize())
+			
 			plt.show()
 
 	else:
