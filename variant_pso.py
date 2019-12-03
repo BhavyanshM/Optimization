@@ -21,16 +21,16 @@ low = -10
 high = 10
 
 init_low_x = -50
-init_high_x = 50
+init_high_x = -49
 init_low_y = -50
-init_high_y = 50
+init_high_y = -49
 
 
 # print(rand1)
 n_particles = 9
 
-n_iterations = 300
-interval = 10
+n_iterations = 3000
+interval = 30
 
 pdots_x = [0 for i in range(n_particles)]
 pdots_y = [0 for i in range(n_particles)]
@@ -129,6 +129,7 @@ def update(i):
 	line2.set_data(time, np.asarray(error))
 
 	# if i+1 == n_iterations:
+	# 	print("Iterations:", i+1, "Best Pos:", g_position, "Value:", g_value)
 	# 	sys.exit()
 
 	return lines[0], line2, tuple(guides), pdots
@@ -176,8 +177,8 @@ if __name__ == "__main__":
 
 	# lines.append(line2)
 	# print(len(lines))
-	ax1.set_xlim(init_low_x,init_high_x)
-	ax1.set_ylim(init_low_y,init_high_y)
+	ax1.set_xlim(-50,50)
+	ax1.set_ylim(-50,50)
 	ax1.set_xlabel("M-axis (Line Slope)")
 	ax1.set_ylabel("C-axis (Line Y-Intercept)")
 	
