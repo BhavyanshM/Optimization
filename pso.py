@@ -16,8 +16,8 @@ init_high_y = 10
 
 
 f  = lambda x, y: 20 + x**2 + y**2 - 10*np.cos(2*np.pi*x) - 10*np.cos(2*np.pi*y)
-xmin, xmax, xstep = low, high, 0.01
-ymin, ymax, ystep = low, high, 0.01
+xmin, xmax, xstep = low-10, high-10, 0.01
+ymin, ymax, ystep = low+20, high+20, 0.01
 x, y = np.meshgrid(np.arange(xmin, xmax + xstep, xstep), np.arange(ymin, ymax + ystep, ystep))
 z = f(x, y)
 
@@ -39,7 +39,7 @@ w0, w1, w2 = demo
 if len(sys.argv) > 1:
 	if sys.argv[1] == "-visual":
 		fig = plt.figure(figsize=(35,15))
-		ax = plt.axes(xlim=(low, high), ylim=(low, high))
+		ax = plt.axes(xlim=(low-10, high-10), ylim=(low-20, high-20))
 		ax.contour(x, y, z, levels=np.linspace(0, 200, 30), norm=LogNorm(), cmap=plt.cm.jet)
 		
 		for i in range(n_particles):
@@ -49,7 +49,9 @@ if len(sys.argv) > 1:
 
 def energy(pos):
 	# paraboloid = pos[0]**2 + pos[1]**2
-	rastrigin = 20 + pos[0]**2 + pos[1]**2 - 10*np.cos(2*np.pi*pos[0]) - 10*np.cos(2*np.pi*pos[1])
+	x = pos[0] + 10
+	y = pos[1] + 20
+	rastrigin = 20 + x**2 + y**2 - 10*np.cos(2*np.pi*x) - 10*np.cos(2*np.pi*y)
 	return rastrigin
 
 def update_velocity(particle, w0, w1, w2):

@@ -17,8 +17,8 @@ matplotlib.rc('font', **font)
 x_lim = (0,100)
 y_lim = (-30,30)
 
-low = -10
-high = 10
+low = -100
+high = 100
 
 init_low_x = -50
 init_high_x = -49
@@ -27,9 +27,9 @@ init_high_y = -49
 
 
 # print(rand1)
-n_particles = 9
+n_particles = 12
 
-n_iterations = 3000
+n_iterations = 300
 interval = 30
 
 pdots_x = [0 for i in range(n_particles)]
@@ -46,7 +46,9 @@ error = []
 
 def rastrigin(pos):
 	# paraboloid = pos[0]**2 + pos[1]**2
-	rastrigin = 20 + pos[0]**2 + pos[1]**2 - 10*np.cos(2*np.pi*pos[0]) - 10*np.cos(2*np.pi*pos[1])
+	x = pos[0]+10
+	y = pos[1]+20
+	rastrigin = 20 + (x)**2 + (y)**2 - 10*np.cos(2*np.pi*(x)) - 10*np.cos(2*np.pi*y)
 	return rastrigin
 
 def update_velocity(particle, w0, w1, w2):
@@ -96,7 +98,8 @@ def update(i):
 
 		# move
 		if k%3 == 0:
-			new_particle_position = 2.0*particles[k+1].position[-1] + -2.0*particles[k+2].position[-1]
+			diff = particles[k+1].position[-1] - particles[k+2].position[-1]
+			new_particle_position = 0.5*particles[k+1].position[-1] + 0.5*particles[k+2].position[-1] + (np.array([diff[1],-diff[0]]) - 2.0 + 4.0*np.array([np.random.random(),np.random.random()]))
 		else:
 			new_particle_position = particles[k].position[-1] + particles[k].velocity
 
@@ -150,12 +153,12 @@ if __name__ == "__main__":
 	xmin, xmax, xstep = low, high, 0.05
 	ymin, ymax, ystep = low, high, 0.05
 	x, y = np.meshgrid(np.arange(xmin, xmax + xstep, xstep), np.arange(ymin, ymax + ystep, ystep))
-	z = f(x, y)
+	z = f(x+10, y+20)
 
 	# Plot 1: Contour and PSO particle animation
 	ax1 = subplot2grid((1,2),(0,0))
 	# ax1 = plt.axes(xlim=(low, high), ylim=(low, high))
-	ax1.contour(x*5, y*5, z, levels=np.linspace(0, 200, 30), norm=LogNorm(), cmap=plt.cm.jet)
+	ax1.contour(x, y, z, levels=np.linspace(0, 200, 30), norm=LogNorm(), cmap=plt.cm.jet)
 	pdots, = ax1.plot([],[],'ro', markersize=10)
 	# ax1.grid(True)
 	# ax1.contour(x, y, z, levels=np.linspace(0, 200, 30), norm=LogNorm(), cmap=plt.cm.jet)
@@ -177,8 +180,9 @@ if __name__ == "__main__":
 
 	# lines.append(line2)
 	# print(len(lines))
-	ax1.set_xlim(-50,50)
-	ax1.set_ylim(-50,50)
+	margin = 5.0
+	ax1.set_xlim(-10-margin,-10+margin)
+	ax1.set_ylim(-20-margin,-20+margin)
 	ax1.set_xlabel("M-axis (Line Slope)")
 	ax1.set_ylabel("C-axis (Line Y-Intercept)")
 	
