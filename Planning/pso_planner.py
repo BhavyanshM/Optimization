@@ -27,13 +27,13 @@ init_high_y = -19
 
 
 # print(rand1)
-n_particles = 10
+n_particles = 5
 
-n_iterations = 500
+n_iterations = 300
 interval = 0
 
-goal = (20,24,3)
-start = (-28,-28,2)
+start = (-30,30,2)	
+goal = (30,-30,3)
 obstacles = [	(-15,10,5),
 				(-3,16,5),
 				(17,5,2),
@@ -49,9 +49,6 @@ obstacles = [	(-15,10,5),
 				(10,20,3),
 				(23,-2,4)
 			]
-
-# obstacles = [(i,j,2) for i in range(-25,25,8) for j in range(-25,25,8)]
-
 obs_np = list(map(np.array,obstacles))
 
 goal_reached = False
@@ -127,8 +124,8 @@ def goal_check(particle):
 class Particle:
 	def __init__(self, id):
 		self.id = id
-		self.position = np.array([[init_low_x+ 2*init_high_x*np.random.random(), init_low_y + 2*init_high_y*np.random.random()]])
-		self.velocity = np.array([0.0, 0.0])
+		self.position = np.array([[start[0], start[1]]])
+		self.velocity = np.array([np.abs(np.random.random()), np.abs(np.random.random())])
 		self.b_value = math.inf
 		self.b_position = self.position[-1]
 
@@ -136,12 +133,10 @@ class Particle:
 		return "Particle {}: Position:{} Velocity:{} bVal:{} bPos{}".format(self.id,self.position,self.velocity,self.b_value,self.b_position)
 
 
-def update(i):
-	global data, g_value, g_position, error, line2, lines, guides, goal_reached,fig
-
-	print("Update")
-
-	if not(goal_reached):
+def simulate(w0,w1,w2):
+	global g_value, g_position, goal_reached
+	particle_id = -1
+	while not(goal_reached):
 		for k in range(n_particles):	
 
 			f = computeField(particles[k])
@@ -157,23 +152,16 @@ def update(i):
 			new_particle_position = update_position(particles[k])
 			particles[k].position = np.vstack([particles[k].position, new_particle_position])
 			if goal_check(particles[k]):
+				particle_id = k
 				goal_reached = True
+				break
 
 			a = particles[k].position[:,0]
 			b = particles[k].position[:,1]
 
-			lines[k].set_data(a,b)
-
-
-		time = np.linspace(1,i+2,i+2)
-		error.append(g_value)
-
-		line2.set_data(time, np.asarray(error)/1000)
 		print(g_position)
-		return lines[0], line2, tuple(guides)
+	return particle_id
 
-	else:
-		return lines[0], line2, tuple(guides)		
 
 if __name__ == "__main__":
 	global fig
@@ -181,36 +169,18 @@ if __name__ == "__main__":
 	demo = (0.95, 0.001, 0.05)
 	w0, w1, w2 = demo
 	m = 9
+	for k in range(n_particles):
+		particles.append(Particle(k))
 
-	fig = plt.figure(figsize=(16,8))
-	ax1 = subplot2grid((1,2),(0,0))
+	fig = plt.figure(figsize=(9,10))
+	ax1 = subplot2grid((1,1),(0,0))
 
-	for i in range(n_particles):
-		line_i, = ax1.plot([], [], lw=2)
-		lines.append(line_i)
-
-	ax2 = subplot2grid((1,2),(0,1))
-	line2, = ax2.plot([],[],lw=1)
-
-	margin = 5.0
-	ax1.set_xlim(-30,30)
-	ax1.set_ylim(-30,30)
-	ax1.set_xlabel("M-axis (Line Slope)")
-	ax1.set_ylabel("C-axis (Line Y-Intercept)")
-	
-	ax2.set_xlim(0,500)
-	ax2.set_ylim(-100,200)
-	ax2.set_xlabel("Iterations Elapsed (PSO)")
-	ax2.set_ylabel("Total Residual (PSO)")
-
-	ax1.grid(False)
-	ax2.grid(True)
 
 	x = np.arange(-30,30,2)
 	y = np.arange(-30,30,2)
 	X,Y = np.meshgrid(x,y)
-	u = ((X-goal[0])**2)*10 + 1
-	v = ((Y-goal[1])**2)*10 + 1
+	u = (-(X-goal[0]))
+	v = (-(Y-goal[1]))
 
 	ax1.quiver(X,Y,u,v)
 
@@ -218,14 +188,38 @@ if __name__ == "__main__":
 		circle = plt.Circle((o[0], o[1]), o[2], color='r')
 		ax1.add_artist(circle)
 
-	goalCircle = plt.Circle((goal[0],goal[1]),goal[2],color='black')
-	ax1.add_artist(goalCircle)
+
+
+	p_id = simulate(w0,w1,w2)
+
+	p = particles[p_id]
+
+
+	clrs = ['y','r','g']
+	for j in range(len(particles)):
+		if j != p_id:
+			for i in range(1,len(particles[j].position)):
+				a = particles[j].position[i]
+				b = particles[j].position[i-1]
+				xs,ys = [a[0],b[0]],[a[1],b[1]]
+				plt.plot(xs,ys,color=clrs[j%len(clrs)],lw=1)
+			plt.plot(particles[j].position[-1,0],particles[j].position[-1,1],marker='o',color='black')
+
+	# plt.plot([start[0], p.position[1,0]],[start[1],p.position[1,1]],color='green',lw=3)
+	for i in range(2,len(p.position),1):
+		a = p.position[i-2]
+		b = p.position[i-1]
+		c = p.position[i]
+		x1,y1,x2,y2 = (c[0]+b[0])/2,(c[1]+b[1])/2,(b[0]+a[0])/2,(b[1]+a[1])/2
+		xs,ys = [x1,x2],[y1,y2]
+		plt.plot(xs,ys,color='b',lw=3)
+	plt.plot([p.position[-1,0],goal[0]],[p.position[-1,1],goal[1]],color='black',lw=3)
+	plt.plot(p.position[-1,0],p.position[-1,1],marker='o',color='yellow')
 
 	startCircle = plt.Circle((start[0],start[1]),start[2],color='green')
 	ax1.add_artist(startCircle)
 
-	for k in range(n_particles):
-		particles.append(Particle(k))
+	goalCircle = plt.Circle((goal[0],goal[1]),goal[2],color='black')
+	ax1.add_artist(goalCircle)
 
-	simulation = FuncAnimation(fig, update, blit=False, frames=n_iterations, interval=interval, repeat=False)
 	plt.show()
