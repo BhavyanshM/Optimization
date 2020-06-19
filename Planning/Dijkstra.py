@@ -18,8 +18,8 @@ matplotlib.rc('font', **font)
 x_lim = (0,120)
 y_lim = (0,120)
 
-n_iterations = 500
-interval = 50
+n_iterations = 5000
+interval = 0
 
 openSet = []
 heapify(openSet)
@@ -59,13 +59,8 @@ b = []
 
 visited = np.array([[0 for i in range(120)] for j in range(120)])
 
-stack = []
-stack.append(current)
 
 ds = [np.array([1,1]),np.array([-1,-1]),np.array([-1,1]),np.array([1,-1])]
-
-def h(pos):
-	return np.linalg.norm(pos - np.array([goal[:2]]))
 
 
 def goal_check(pos):
@@ -85,31 +80,33 @@ def free(pos):
 			break
 	return good
 
+
+count = 0
 def update(i):
-	global current, openSet, fScore, gScore
+	global current, openSet, dist, prev, count
 	print("Update:",i)
 
 	if len(openSet) > 0:
-		current = heappop(openSet)[1]
+		current = heappop(openSet)[2]
 		a.append(current[0])
 		b.append(current[1])
 	if goal_check(current):
 		print("Goal Reached!")
 		sys.exit()
 	else:
-
 		for d in ds:
+			count += 1
 			nextNode = current+d
 			if (x_lim[0] < nextNode[0] <  x_lim[1]) and (y_lim[0] < nextNode[1] <  y_lim[1]) and visited[nextNode[0],nextNode[1]] == 0 and free(nextNode):
 				
-				tentative_gScore = gScore[current[0],current[1]] + np.sqrt(1)
+				alt = dist[current[0],current[1]] + np.sqrt(1)
 				
-				if tentative_gScore < gScore[nextNode[0],nextNode[1]]:
-					gScore[nextNode[0],nextNode[1]] = tentative_gScore
-					fScore[nextNode[0],nextNode[1]] = gScore[nextNode[0],nextNode[1]] + h(nextNode)
+				if alt < dist[nextNode[0],nextNode[1]]:
+					print("Reached")
+					dist[nextNode[0],nextNode[1]] = alt
 
 					if nextNode not in openSet:
-						heappush(openSet,(fScore[nextNode[0],nextNode[1]], nextNode))
+						heappush(openSet,(alt,count, nextNode))
 
 
 		graph.set_data(a, b)
@@ -119,13 +116,12 @@ def update(i):
 
 
 if __name__ == "__main__":
-	global fig, fScore, gScore
+	global fig, dist, prev
 
-	fScore = np.ones(shape=(120,120))*math.inf
-	gScore = np.ones(shape=(120,120))*math.inf
+	dist = np.ones(shape=(120,120))*math.inf
+	prev = np.ones(shape=(120,120))*math.inf
 
-	gScore[start[0],start[1]] = 0
-	fScore[start[0],start[1]] = h(start)
+	dist[start[0],start[1]] = 0
 
 	fig = plt.figure(figsize=(16,16))
 	ax1 = subplot2grid((1,1),(0,0))

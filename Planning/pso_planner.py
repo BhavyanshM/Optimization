@@ -172,7 +172,7 @@ if __name__ == "__main__":
 	for k in range(n_particles):
 		particles.append(Particle(k))
 
-	fig = plt.figure(figsize=(9,10))
+	fig = plt.figure(figsize=(16,17))
 	ax1 = subplot2grid((1,1),(0,0))
 
 
