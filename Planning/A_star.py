@@ -54,8 +54,8 @@ obs_np = list(map(np.array,obstacles))
 goal_reached = False
 
 
-a = []
-b = []
+a,b = [],[]
+pa,pb = [],[]
 
 visited = np.array([[0 for i in range(120)] for j in range(120)])
 
@@ -86,18 +86,32 @@ def free(pos):
 	return good
 
 def update(i):
-	global current, openSet, fScore, gScore
+	global current, openSet, fScore, gScore, goal_reached
 	print("Update:",i)
 
-	if len(openSet) > 0:
+	if len(openSet) > 0 and not(goal_reached):
+		print("First")
 		current = heappop(openSet)[1]
 		a.append(current[0])
 		b.append(current[1])
-	if goal_check(current):
-		print("Goal Reached!")
-		sys.exit()
-	else:
+	if goal_check(current) or goal_reached:
+		print("Second")
+		goal_reached = True
+		total_path.append(current)
 
+		pa.append(current[0])
+		pb.append(current[1])
+
+		path.set_data(pa,pb)
+
+		if (start!=current).all():
+			current = cameFrom[current[0],current[1]]
+		else:
+			return graph,path
+			sys.exit()
+
+	else:
+		print("Third")
 		for d in ds:
 			nextNode = current+d
 			if (x_lim[0] < nextNode[0] <  x_lim[1]) and (y_lim[0] < nextNode[1] <  y_lim[1]) and visited[nextNode[0],nextNode[1]] == 0 and free(nextNode):
@@ -105,6 +119,7 @@ def update(i):
 				tentative_gScore = gScore[current[0],current[1]] + np.sqrt(1)
 				
 				if tentative_gScore < gScore[nextNode[0],nextNode[1]]:
+					cameFrom[nextNode[0],nextNode[1]] = current
 					gScore[nextNode[0],nextNode[1]] = tentative_gScore
 					fScore[nextNode[0],nextNode[1]] = gScore[nextNode[0],nextNode[1]] + h(nextNode)
 
@@ -114,7 +129,7 @@ def update(i):
 
 		graph.set_data(a, b)
 	
-	return graph,
+	return graph,path
 
 
 
@@ -123,6 +138,10 @@ if __name__ == "__main__":
 
 	fScore = np.ones(shape=(120,120))*math.inf
 	gScore = np.ones(shape=(120,120))*math.inf
+	cameFrom = np.array([[start for i in range(120)] for j in range(120)])
+	total_path = []
+
+
 
 	gScore[start[0],start[1]] = 0
 	fScore[start[0],start[1]] = h(start)
@@ -131,6 +150,7 @@ if __name__ == "__main__":
 	ax1 = subplot2grid((1,1),(0,0))
 
 	graph, = ax1.plot([],[],'o',markersize='5.0',color='blue')
+	path, = ax1.plot([],[],'o',markersize='8.0',color='green')
 
 	margin = 5.0
 	ax1.set_xlim(0,120)
