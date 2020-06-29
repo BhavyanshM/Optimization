@@ -18,7 +18,7 @@ matplotlib.rc('font', **font)
 x_lim = (0,120)
 y_lim = (0,120)
 
-n_iterations = 5000
+n_iterations = 20000
 interval = 0
 
 openSet = []
@@ -56,11 +56,21 @@ goal_reached = False
 
 a = []
 b = []
+pa,pb = [],[]
 
 visited = np.array([[0 for i in range(120)] for j in range(120)])
 
 
-ds = [np.array([1,1]),np.array([-1,-1]),np.array([-1,1]),np.array([1,-1])]
+ds = [	2*np.array([1,1]),
+		2*np.array([1,0]),
+		2*np.array([1,-1]),
+		2*np.array([0,-1]),
+		2*np.array([-1,-1]),
+		2*np.array([-1,0]),
+		2*np.array([-1,1]),
+		2*np.array([0,1])]
+
+
 
 
 def goal_check(pos):
@@ -83,27 +93,43 @@ def free(pos):
 
 count = 0
 def update(i):
-	global current, openSet, dist, prev, count
+	global current, openSet, dist, prev, count, goal_reached
 	print("Update:",i)
 
-	if len(openSet) > 0:
+	if len(openSet) > 0 and not(goal_reached):
 		current = heappop(openSet)[2]
 		a.append(current[0])
 		b.append(current[1])
-	if goal_check(current):
+	if goal_check(current) or goal_reached:
 		print("Goal Reached!")
-		sys.exit()
+		goal_reached = True
+
+		total_path.append(current)
+
+		pa.append(current[0])
+		pb.append(current[1])
+
+		path.set_data(pa,pb)
+
+		print((start==current).all(),start,current)
+		if (start!=current).all():
+			current = prev[current[0],current[1]]
+		else:
+			return graph,path
+			sys.exit()
+
 	else:
 		for d in ds:
 			count += 1
 			nextNode = current+d
 			if (x_lim[0] < nextNode[0] <  x_lim[1]) and (y_lim[0] < nextNode[1] <  y_lim[1]) and visited[nextNode[0],nextNode[1]] == 0 and free(nextNode):
 				
-				alt = dist[current[0],current[1]] + np.sqrt(1)
+				alt = dist[current[0],current[1]] + np.linalg.norm(ds)
 				
 				if alt < dist[nextNode[0],nextNode[1]]:
 					print("Reached")
 					dist[nextNode[0],nextNode[1]] = alt
+					prev[nextNode[0],nextNode[1]] = current
 
 					if nextNode not in openSet:
 						heappush(openSet,(alt,count, nextNode))
@@ -111,7 +137,7 @@ def update(i):
 
 		graph.set_data(a, b)
 	
-	return graph,
+	return graph,path
 
 
 
@@ -119,14 +145,16 @@ if __name__ == "__main__":
 	global fig, dist, prev
 
 	dist = np.ones(shape=(120,120))*math.inf
-	prev = np.ones(shape=(120,120))*math.inf
+	prev = np.array([[start for i in range(120)] for j in range(120)])
+	total_path = []
 
 	dist[start[0],start[1]] = 0
 
 	fig = plt.figure(figsize=(16,16))
 	ax1 = subplot2grid((1,1),(0,0))
 
-	graph, = ax1.plot([],[],'o',markersize='5.0',color='blue')
+	graph, = ax1.plot([],[],'o',markersize='5.0',color='green')
+	path, = ax1.plot([],[],'o',markersize='8.0',color='blue')
 
 	margin = 5.0
 	ax1.set_xlim(0,120)
