@@ -62,7 +62,14 @@ visited = np.array([[0 for i in range(120)] for j in range(120)])
 stack = []
 stack.append(current)
 
-ds = [np.array([1,1]),np.array([-1,-1]),np.array([-1,1]),np.array([1,-1])]
+ds = [	np.array([1,1]),
+		np.array([1,0]),
+		np.array([1,-1]),
+		np.array([0,-1]),
+		np.array([-1,-1]),
+		np.array([-1,0]),
+		np.array([-1,1]),
+		np.array([0,1])]
 
 def h(pos):
 	return np.linalg.norm(pos - np.array([goal[:2]]))
@@ -149,8 +156,8 @@ if __name__ == "__main__":
 	fig = plt.figure(figsize=(16,16))
 	ax1 = subplot2grid((1,1),(0,0))
 
-	graph, = ax1.plot([],[],'o',markersize='5.0',color='blue')
-	path, = ax1.plot([],[],'o',markersize='8.0',color='green')
+	graph, = ax1.plot([],[],'o',markersize='5.0',color='green')
+	path, = ax1.plot([],[],'o',markersize='8.0',color='blue')
 
 	margin = 5.0
 	ax1.set_xlim(0,120)
