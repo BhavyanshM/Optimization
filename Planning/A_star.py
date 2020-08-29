@@ -153,11 +153,11 @@ if __name__ == "__main__":
 	gScore[start[0],start[1]] = 0
 	fScore[start[0],start[1]] = h(start)
 
-	fig = plt.figure(figsize=(16,16))
+	fig = plt.figure(figsize=(9,9))
 	ax1 = subplot2grid((1,1),(0,0))
 
-	graph, = ax1.plot([],[],'o',markersize='5.0',color='green')
-	path, = ax1.plot([],[],'o',markersize='8.0',color='blue')
+	graph, = ax1.plot([],[],'o',markersize='2.5',color='blue')
+	path, = ax1.plot([],[],'o',markersize='3.0',color='yellow')
 
 	margin = 5.0
 	ax1.set_xlim(0,120)
@@ -172,10 +172,10 @@ if __name__ == "__main__":
 		circle = plt.Circle((o[0], o[1]), o[2], color='r')
 		ax1.add_artist(circle)
 
-	goalCircle = plt.Circle((goal[0],goal[1]),goal[2],color='black')
+	goalCircle = plt.Circle((goal[0],goal[1]),goal[2],color='green')
 	ax1.add_artist(goalCircle)
 
-	startCircle = plt.Circle((start[0],start[1]),4,color='green')
+	startCircle = plt.Circle((start[0],start[1]),2,color='green')
 	ax1.add_artist(startCircle)
 
 	x = np.arange(0,120,1)

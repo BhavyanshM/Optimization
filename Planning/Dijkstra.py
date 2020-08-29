@@ -19,7 +19,7 @@ x_lim = (0,120)
 y_lim = (0,120)
 
 n_iterations = 20000
-interval = 0
+interval = 30
 
 openSet = []
 heapify(openSet)
@@ -150,11 +150,11 @@ if __name__ == "__main__":
 
 	dist[start[0],start[1]] = 0
 
-	fig = plt.figure(figsize=(16,16))
+	fig = plt.figure(figsize=(9,9))
 	ax1 = subplot2grid((1,1),(0,0))
 
-	graph, = ax1.plot([],[],'o',markersize='5.0',color='green')
-	path, = ax1.plot([],[],'o',markersize='8.0',color='blue')
+	graph, = ax1.plot([],[],'o',markersize='3.5',color='green')
+	path, = ax1.plot([],[],'o',markersize='4.0',color='blue')
 
 	margin = 5.0
 	ax1.set_xlim(0,120)
@@ -172,7 +172,7 @@ if __name__ == "__main__":
 	goalCircle = plt.Circle((goal[0],goal[1]),goal[2],color='black')
 	ax1.add_artist(goalCircle)
 
-	startCircle = plt.Circle((start[0],start[1]),4,color='green')
+	startCircle = plt.Circle((start[0],start[1]),2,color='green')
 	ax1.add_artist(startCircle)
 
 	x = np.arange(0,120,1)
@@ -180,7 +180,7 @@ if __name__ == "__main__":
 
 	X,Y = np.meshgrid(x,y)
 
-	scat = plt.scatter(X,Y,s=0.8,color='black')
+	scat = plt.scatter(X,Y,s=0.6,color='green')
 
 	simulation = FuncAnimation(fig, update, blit=True, frames=n_iterations, interval=interval, repeat=False)
 	plt.show()
