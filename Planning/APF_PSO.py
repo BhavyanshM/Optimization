@@ -16,49 +16,27 @@ matplotlib.rc('font', **font)
 x_lim = (-30, 30)
 y_lim = (-30, 30)
 
-low = -100
-high = 100
+low, high = -100, 100
 
-init_low_x = -20
-init_high_x = -19
-init_low_y = -20
-init_high_y = -19
-
-# print(rand1)
-n_particles = 5
-
-n_iterations = 500
-interval = 60
-
-goal = (20, 24, 3)
-start = (-28, -28, 2)
-obstacles = [(-15, 10, 5),
-             (-3, 16, 5),
-             (17, 5, 2),
-             (1, -3, 4),
-             (0, -20, 6),
-             (20, 12, 4),
-             (-14, -18, 4),
-             (13, -12, 4),
-             (-10, -8, 4),
-             (14, -20, 2),
-             (8, 5, 4),
-             (-22, -3, 4),
-             (10, 20, 3),
-             (23, -2, 4)
-             ]
-
-# obstacles = [(i,j,3) for i in range(-25,25,16) for j in range(-25,25,16)]
-
-obs_np = list(map(np.array, obstacles))
+init_low_x, init_high_x, init_low_y, init_high_y = -20, -19, -20, -19
+n_particles, n_iterations, interval = 7, 500, 60
 
 goal_reached = False
+goal = (20, 24, 3)
+start = (-28, -28, 2)
+obstacles = [(-15, 10, 5), (-3, 16, 5), (17, 5, 2), (1, -3, 4), (0, -20, 6),
+             (20, 12, 4), (-14, -18, 4), (13, -12, 4), (-10, -8, 4), (14, -20, 2),
+             (8, 5, 4), (-22, -3, 4), (10, 20, 3), (23, -2, 4)]
+
+line_obstacles = [(-30, 0, 15, 0), (20, -10, 30, -10), (15, 0, 15, 5), (20, -10, 20, 10),
+                  (20,10,15,20)]
+
+# obstacles = [(i,j,3) for i in range(-25,25,16) for j in range(-25,25,16)]
+obs_np = list(map(np.array, obstacles))
 
 pdots_x = [0 for i in range(n_particles)]
 pdots_y = [0 for i in range(n_particles)]
-lines = []
-guides = []
-particles = []
+lines, guides, particles = [], [], []
 
 g_value = 1000000
 g_position = np.array([low + 2 * high * np.random.random(), low + 2 * high * np.random.random()])
@@ -75,12 +53,8 @@ ax1 = subplot2grid((1, 2), (0, 0))
 ax2 = subplot2grid((1, 2), (0, 1))
 line2, = ax2.plot([], [], lw=1)
 
-pathParticleID = 0
-pathFindTime = 0
-
-vStart = []
-vEnd = []
-
+pathParticleID, pathFindTime = 0, 0
+vStart, vEnd = [], []
 startPoint = np.array(start[:2])
 
 segCount = 0
@@ -108,23 +82,50 @@ def computeField(particle):
     y = p_pos[1]
     energy = (np.square(x - goal[0]) + np.square(y - goal[1])) * 200
     for o in obstacles:
-        energy -= (np.square(x - o[0]) + np.square(y - o[1])) * 2
+        distance = np.linalg.norm(p_pos - o[:2])
+        energy -= np.square(distance) * 2
     return energy
 
 
-def update_velocity(particle, wM, wL, wG):
-    global g_value, g_position
-
-    new_velocity = wM * particle.velocity + \
-                   wL * (particle.b_position - particle.position[-1]) + \
-                   wG * (g_position - particle.position[-1])
-
+def apply_circ_field(particle, new_velocity):
     dmargin = 0.4
     for o in obs_np:
         distance = np.linalg.norm(particle.position[-1] - np.array([o[:2]])) - dmargin
         new_velocity += (particle.position[-1] - np.array(o[:2])) / (12 * np.square(distance - o[2]))
-        new_velocity += np.random.normal(size=(2,)) / 35
 
+    return new_velocity
+
+
+def point_projection(p, a, b):
+    l = np.dot(p - a, b - a)
+    ab = np.linalg.norm(b - a)
+    ab2 = np.square(ab)
+    m = a + l * (b - a) / ab2
+    return m
+
+
+def apply_line_field(particle, new_velocity):
+    for o in line_obstacles:
+        p, a, b = particle.position[-1], np.array(o[:2]), np.array(o[2:])
+        m = point_projection(p, a, b)
+
+        od = np.linalg.norm(p - m)
+        al, bl = np.linalg.norm(m - a), np.linalg.norm(m - b)
+        if od < 2 and np.abs(al - bl) < np.linalg.norm(b-a):
+            new_velocity += (p - m) / (1e-16 + np.square(0.5 * (od)))
+
+        # ax1.plot([m[0],p[0]],[m[1],p[1]],'r-')
+
+    return new_velocity
+
+
+def update_velocity(particle, wM, wL, wG):
+    global g_value, g_position
+    new_velocity = wM * particle.velocity + \
+                   wL * (particle.b_position - particle.position[-1]) + \
+                   wG * (g_position - particle.position[-1])
+    new_velocity = apply_line_field(particle, new_velocity)
+    new_velocity += np.random.normal(size=(2,)) / 10
     return new_velocity / np.linalg.norm(new_velocity)
 
 
@@ -167,6 +168,32 @@ def visible(start, end):
         d = np.linalg.norm(obs - projection)
         # print(d,o[2])
         if d < o[2] + margin:
+            result = False
+            break
+
+    return result
+
+
+def visible_line(start, end):
+    result = True
+    margin = 0.3
+
+    for o in line_obstacles:
+        a, b = np.array(o[:2]), np.array(o[2:])
+        sm = point_projection(start, a, b)
+        em = point_projection(end,a,b)
+        smd = start - sm
+        emd = end - em
+
+        am = point_projection(a,start,end)
+        bm = point_projection(b,start,end)
+        amd = a - am
+        bmd = b - bm
+
+        prod_ab = np.dot(amd,bmd)
+        prod_se = np.dot(smd,emd)
+
+        if prod_ab < 2 and prod_se < 2:
             result = False
             break
 
@@ -235,18 +262,30 @@ def update(i):
 
             ax1.plot([vS[-1, 0], vE[-1, 0]], [vS[-1, 1], vE[-1, 1]], 'r-', lw=1)
 
-            if not (visible(startPoint, currentPoint)):
+            if not (visible_line(startPoint, currentPoint)):
                 ax1.plot([vS[-1, 0], vE[-1, 0]], [vS[-1, 1], vE[-1, 1]], 'g-', lw=3)
                 segments.append([startPoint, currentPoint])
                 startPoint = currentPoint
                 segCount += 1
 
         if t == len(path):
+            print("Total Segments:",len(segments))
             segments.append([startPoint, goal[:2]])
             for s, e in segments:
                 ax1.plot([s[0], e[0]], [s[1], e[1]], 'b-', lw=3)
 
         return lines[0], line2, tuple(guides)
+
+
+def draw_circ_obs():
+    for o in obstacles:
+        circle = plt.Circle((o[0], o[1]), o[2], color='r')
+        ax1.add_artist(circle)
+
+
+def draw_line_obs():
+    for o in line_obstacles:
+        ax1.plot([o[0], o[2]], [o[1], o[3]], 'g-', lw=2)
 
 
 if __name__ == "__main__":
@@ -278,9 +317,7 @@ if __name__ == "__main__":
 
     ax1.quiver(X, Y, u, v, color='y', lw=1)
 
-    for o in obstacles:
-        circle = plt.Circle((o[0], o[1]), o[2], color='r')
-        ax1.add_artist(circle)
+    draw_line_obs()
 
     goalCircle = plt.Circle((goal[0], goal[1]), goal[2], color='black')
     ax1.add_artist(goalCircle)
@@ -291,5 +328,7 @@ if __name__ == "__main__":
     for k in range(n_particles):
         particles.append(Particle(k))
 
-    simulation = FuncAnimation(fig, update, blit=False, frames=n_iterations, interval=interval, repeat=False)
+    anim = FuncAnimation(fig, update, blit=False, frames=n_iterations, interval=interval, repeat=False)
+
     plt.show()
+
