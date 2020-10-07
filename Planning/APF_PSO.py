@@ -19,7 +19,7 @@ y_lim = (-30, 30)
 low, high = -100, 100
 
 init_low_x, init_high_x, init_low_y, init_high_y = -20, -19, -20, -19
-n_particles, n_iterations, interval = 7, 500, 60
+n_particles, n_iterations, interval = 3, 500, 0
 
 goal_reached = False
 goal = (20, 24, 3)
@@ -29,7 +29,7 @@ obstacles = [(-15, 10, 5), (-3, 16, 5), (17, 5, 2), (1, -3, 4), (0, -20, 6),
              (8, 5, 4), (-22, -3, 4), (10, 20, 3), (23, -2, 4)]
 
 line_obstacles = [(-30, 0, 15, 0), (20, -10, 30, -10), (15, 0, 15, 5), (20, -10, 20, 10),
-                  (20,10,15,20)]
+                  (20,10,5,10)]
 
 # obstacles = [(i,j,3) for i in range(-25,25,16) for j in range(-25,25,16)]
 obs_np = list(map(np.array, obstacles))
@@ -43,7 +43,7 @@ g_position = np.array([low + 2 * high * np.random.random(), low + 2 * high * np.
 error = []
 
 best = (0.96, 0.01, 0.08)
-demo = (0.95, 0.001, 0.1)
+demo = (0.95, 0.01, 0.1)
 
 wM, wL, wG = demo
 m = 9
@@ -74,9 +74,25 @@ class Particle:
         return "Particle {}: Position:{} Velocity:{} bVal:{} bPos{}".format(self.id, self.position, self.velocity,
                                                                             self.b_value, self.b_position)
 
+def scan_lidar(particle):
+    """
+    Calculate and return a LIDAR-type scan around the given particle.
+    Consider all obstacle types such as linear and circular.
+    :param particle:
+    :return:
+    """
+    for i in range(60):
+        print("None")
 
-def computeField(particle):
-    # print(particle.position)
+def compute_field(particle):
+    """
+    Compute the PSO fitness function at the particle position.
+    Combine both distances from goal and obstacles.
+    Higher is better.
+    :param particle:
+    :return:
+    """
+
     p_pos = particle.position[-1]
     x = p_pos[0]
     y = p_pos[1]
@@ -87,7 +103,58 @@ def computeField(particle):
     return energy
 
 
+def point_projection(p, a, b):
+    """
+    Calculate the orthogonal projection of point 'p' on line 'a-b'.
+    :param p:
+    :param a:
+    :param b:
+    :return:
+    """
+    l = np.dot(p - a, b - a)
+    ab = np.linalg.norm(b - a)
+    ab2 = np.square(ab)
+    m = a + l * (b - a) / ab2
+    return m
+
+v_obs = (0,0,0)
+def apply_temporal_field(particle, new_velocity):
+    """
+    Create a virtual circular obstacle at the 5th last position of the given particle.
+    Use this as a temporal obstacle which is applied only when the distance between
+    0th and h'th previous positions of the particle is larger than a threshold.
+    :param particle:
+    :return:
+    """
+    global v_obs
+
+    h = 20
+    if len(particle.position) < h:
+        return new_velocity
+
+    travel = np.linalg.norm(particle.position[-h] - particle.position[-1])
+
+    if travel < 1:
+        o = (particle.position[-int(h / 2)][0], particle.position[-int(h / 2)][1], 1)
+        d_last = np.linalg.norm(np.array(o[:2]) - np.array(v_obs[:2]))
+
+        if d_last > 5:
+            print("Temporal Field Applied")
+            v_obs = o
+
+        distance = np.linalg.norm(particle.position[-1] - np.array([v_obs[:2]]))
+        new_velocity += 30*(particle.position[-1] - np.array(v_obs[:2])) / (np.square(distance - v_obs[2]))
+
+    return new_velocity
+
 def apply_circ_field(particle, new_velocity):
+    """
+    Compute velocity change due to potential fields from circular obstacles.
+    Lower is better.
+    :param particle:
+    :param new_velocity:
+    :return:
+    """
     dmargin = 0.4
     for o in obs_np:
         distance = np.linalg.norm(particle.position[-1] - np.array([o[:2]])) - dmargin
@@ -96,15 +163,14 @@ def apply_circ_field(particle, new_velocity):
     return new_velocity
 
 
-def point_projection(p, a, b):
-    l = np.dot(p - a, b - a)
-    ab = np.linalg.norm(b - a)
-    ab2 = np.square(ab)
-    m = a + l * (b - a) / ab2
-    return m
-
-
 def apply_line_field(particle, new_velocity):
+    """
+    Compute change in particle's velocity due to linear obstacles such as walls and boxes.
+    Line obstacles exert acceleration perpendicular to their slope going away from them.
+    :param particle:
+    :param new_velocity:
+    :return:
+    """
     for o in line_obstacles:
         p, a, b = particle.position[-1], np.array(o[:2]), np.array(o[2:])
         m = point_projection(p, a, b)
@@ -120,16 +186,33 @@ def apply_line_field(particle, new_velocity):
 
 
 def update_velocity(particle, wM, wL, wG):
+    """
+    Compute the final velocity update for the given particle.
+    Combine velocity updates from linear, circular and other obstacles.
+    :param particle:
+    :param wM:
+    :param wL:
+    :param wG:
+    :return:
+    """
     global g_value, g_position
     new_velocity = wM * particle.velocity + \
                    wL * (particle.b_position - particle.position[-1]) + \
                    wG * (g_position - particle.position[-1])
-    new_velocity = apply_line_field(particle, new_velocity)
+    new_velocity = apply_circ_field(particle, new_velocity)
+    # new_velocity = apply_temporal_field(particle, new_velocity)
     new_velocity += np.random.normal(size=(2,)) / 10
     return new_velocity / np.linalg.norm(new_velocity)
 
 
 def update_position(particle):
+    """
+    Compute final position update for the given particle.
+    Combine effects from only the velocity update.
+    Consider reflecting the particle velocity at boundaries.
+    :param particle:
+    :return:
+    """
     p_vel = particle.velocity
     new_position = particle.position[-1] + p_vel
 
@@ -149,6 +232,11 @@ def update_position(particle):
 
 
 def goal_check(particle):
+    """
+    Check whether the distance to goal is within the goal threshold.
+    :param particle:
+    :return:
+    """
     distance = np.linalg.norm(particle.position[-1] - np.array([goal[:2]]))
     if distance < goal[2]:
         return True
@@ -157,6 +245,13 @@ def goal_check(particle):
 
 
 def visible(start, end):
+    """
+    Check whether the 'end' point is visible from the 'start' point.
+    Check collision with all circular obstacles.
+    :param start:
+    :param end:
+    :return:
+    """
     result = True
     margin = 0.3
 
@@ -175,6 +270,13 @@ def visible(start, end):
 
 
 def visible_line(start, end):
+    """
+    Check whether the 'end' point is visible from the 'start' point.
+    Check collision with all linear obstacles such as walls and boxes.
+    :param start:
+    :param end:
+    :return:
+    """
     result = True
     margin = 0.3
 
@@ -201,16 +303,21 @@ def visible_line(start, end):
 
 
 def update(i):
+    """
+    Event loop for the algorithm. All the updates are called from this function
+    which runs 'n_iteration' number of times.
+    :param i:
+    :return:
+    """
     global g_value, g_position, error, line2, lines, guides, goal_reached, \
         pathParticleID, pathFindTime, vStart, vEnd, startPoint, pathLines, \
         segCount
 
     if not (goal_reached):
         print("Update:{}".format(i))
-        # print("Update:{}".format(i))
         for k in range(n_particles):
 
-            f = computeField(particles[k])
+            f = compute_field(particles[k])
             if f < particles[k].b_value:
                 particles[k].b_value = f
                 particles[k].b_position = particles[k].position[-1]
@@ -230,16 +337,11 @@ def update(i):
 
             a = np.array(particles[k].position)[:, 0]
             b = np.array(particles[k].position)[:, 1]
-
-            # print(a,b)
-
             lines[k].set_data(a, b)
 
         time = np.linspace(1, i + 2, i + 2)
         error.append(g_value)
-
         line2.set_data(time, np.asarray(error) / 1000)
-        # print(g_position)
         return lines[0], line2, tuple(guides)
 
     else:
@@ -249,20 +351,14 @@ def update(i):
 
         if t < len(path):
             currentPoint = path[t]
-            # print("PathTime:{} Total:{} Start:{} End:{}".format(t,len(path),startPoint,currentPoint))
-
-            # print(vStart)
-            # print(vEnd)
-
             vStart.append(startPoint)
             vEnd.append(currentPoint)
-
             vS = np.array(vStart)
             vE = np.array(vEnd)
 
             ax1.plot([vS[-1, 0], vE[-1, 0]], [vS[-1, 1], vE[-1, 1]], 'r-', lw=1)
 
-            if not (visible_line(startPoint, currentPoint)):
+            if not (visible(startPoint, currentPoint)):
                 ax1.plot([vS[-1, 0], vE[-1, 0]], [vS[-1, 1], vE[-1, 1]], 'g-', lw=3)
                 segments.append([startPoint, currentPoint])
                 startPoint = currentPoint
@@ -276,17 +372,14 @@ def update(i):
 
         return lines[0], line2, tuple(guides)
 
-
 def draw_circ_obs():
     for o in obstacles:
         circle = plt.Circle((o[0], o[1]), o[2], color='r')
         ax1.add_artist(circle)
 
-
 def draw_line_obs():
     for o in line_obstacles:
         ax1.plot([o[0], o[2]], [o[1], o[3]], 'g-', lw=2)
-
 
 if __name__ == "__main__":
     # global fig
@@ -305,7 +398,6 @@ if __name__ == "__main__":
     ax2.set_ylim(-100, 200)
     ax2.set_xlabel("Iterations Elapsed (PSO)")
     ax2.set_ylabel("Total Residual (PSO)")
-
     ax1.grid(False)
     ax2.grid(True)
 
@@ -317,11 +409,13 @@ if __name__ == "__main__":
 
     ax1.quiver(X, Y, u, v, color='y', lw=1)
 
-    draw_line_obs()
+
+    # draw_line_obs()
+    draw_circ_obs()
+
 
     goalCircle = plt.Circle((goal[0], goal[1]), goal[2], color='black')
     ax1.add_artist(goalCircle)
-
     startCircle = plt.Circle((start[0], start[1]), start[2], color='green')
     ax1.add_artist(startCircle)
 
@@ -329,6 +423,5 @@ if __name__ == "__main__":
         particles.append(Particle(k))
 
     anim = FuncAnimation(fig, update, blit=False, frames=n_iterations, interval=interval, repeat=False)
-
     plt.show()
 
