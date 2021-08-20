@@ -26,8 +26,8 @@ particles = []
 
 n_particles = 10
 
-n_iterations = 300
-interval = 0
+n_iterations = 500
+interval = 100
 
 g_value = 1000000
 g_position = np.array([low + 2*high*np.random.random(), low + 2*high*np.random.random()])

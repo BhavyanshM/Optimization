@@ -1,16 +1,13 @@
-import sys
-import math
-import numpy as np
 # from matplotlib import pyplot as plt
 from matplotlib.animation import FuncAnimation
-from matplotlib.colors import LogNorm
 from matplotlib.pylab import *
-from mpl_toolkits.axes_grid1 import host_subplot
+import os
+import datetime
 
 plt.style.use('seaborn-pastel')
 
 # Sent for figure
-font = {'size': 8}
+font = {'size': 12}
 matplotlib.rc('font', **font)
 
 x_lim = (-30, 30)
@@ -19,7 +16,7 @@ y_lim = (-30, 30)
 low, high = -100, 100
 
 init_low_x, init_high_x, init_low_y, init_high_y = -20, -19, -20, -19
-n_particles, n_iterations, interval = 3, 500, 0
+n_particles, n_iterations, interval = 30, 500, 1
 
 goal_reached = False
 goal = (20, 24, 3)
@@ -29,7 +26,7 @@ obstacles = [(-15, 10, 5), (-3, 16, 5), (17, 5, 2), (1, -3, 4), (0, -20, 6),
              (8, 5, 4), (-22, -3, 4), (10, 20, 3), (23, -2, 4)]
 
 line_obstacles = [(-30, 0, 15, 0), (20, -10, 30, -10), (15, 0, 15, 5), (20, -10, 20, 10),
-                  (20,10,5,10)]
+                  (20, 10, 5, 10)]
 
 # obstacles = [(i,j,3) for i in range(-25,25,16) for j in range(-25,25,16)]
 obs_np = list(map(np.array, obstacles))
@@ -48,10 +45,12 @@ demo = (0.95, 0.01, 0.1)
 wM, wL, wG = demo
 m = 9
 
-fig = plt.figure(figsize=(16, 8))
+fig = plt.figure(figsize=(24, 12))
 ax1 = subplot2grid((1, 2), (0, 0))
 ax2 = subplot2grid((1, 2), (0, 1))
 line2, = ax2.plot([], [], lw=1)
+
+extent = ax1.get_window_extent().transformed(fig.dpi_scale_trans.inverted())
 
 pathParticleID, pathFindTime = 0, 0
 vStart, vEnd = [], []
@@ -59,6 +58,11 @@ startPoint = np.array(start[:2])
 
 segCount = 0
 segments = []
+
+t_now = datetime.datetime.now()
+tstamp = str(t_now.date()) + '_' + str(t_now.hour) + '_' + str(t_now.minute) + '_' + str(t_now.second)
+os.mkdir('./Images/' + tstamp)
+os.mkdir('./Residuals/' + tstamp)
 
 
 class Particle:
@@ -74,6 +78,7 @@ class Particle:
         return "Particle {}: Position:{} Velocity:{} bVal:{} bPos{}".format(self.id, self.position, self.velocity,
                                                                             self.b_value, self.b_position)
 
+
 def scan_lidar(particle):
     """
     Calculate and return a LIDAR-type scan around the given particle.
@@ -83,6 +88,7 @@ def scan_lidar(particle):
     """
     for i in range(60):
         print("None")
+
 
 def compute_field(particle):
     """
@@ -117,7 +123,10 @@ def point_projection(p, a, b):
     m = a + l * (b - a) / ab2
     return m
 
-v_obs = (0,0,0)
+
+v_obs = (0, 0, 0)
+
+
 def apply_temporal_field(particle, new_velocity):
     """
     Create a virtual circular obstacle at the 5th last position of the given particle.
@@ -143,9 +152,10 @@ def apply_temporal_field(particle, new_velocity):
             v_obs = o
 
         distance = np.linalg.norm(particle.position[-1] - np.array([v_obs[:2]]))
-        new_velocity += 30*(particle.position[-1] - np.array(v_obs[:2])) / (np.square(distance - v_obs[2]))
+        new_velocity += 30 * (particle.position[-1] - np.array(v_obs[:2])) / (np.square(distance - v_obs[2]))
 
     return new_velocity
+
 
 def apply_circ_field(particle, new_velocity):
     """
@@ -177,7 +187,7 @@ def apply_line_field(particle, new_velocity):
 
         od = np.linalg.norm(p - m)
         al, bl = np.linalg.norm(m - a), np.linalg.norm(m - b)
-        if od < 2 and np.abs(al - bl) < np.linalg.norm(b-a):
+        if od < 2 and np.abs(al - bl) < np.linalg.norm(b - a):
             new_velocity += (p - m) / (1e-16 + np.square(0.5 * (od)))
 
         # ax1.plot([m[0],p[0]],[m[1],p[1]],'r-')
@@ -283,23 +293,34 @@ def visible_line(start, end):
     for o in line_obstacles:
         a, b = np.array(o[:2]), np.array(o[2:])
         sm = point_projection(start, a, b)
-        em = point_projection(end,a,b)
+        em = point_projection(end, a, b)
         smd = start - sm
         emd = end - em
 
-        am = point_projection(a,start,end)
-        bm = point_projection(b,start,end)
+        am = point_projection(a, start, end)
+        bm = point_projection(b, start, end)
         amd = a - am
         bmd = b - bm
 
-        prod_ab = np.dot(amd,bmd)
-        prod_se = np.dot(smd,emd)
+        prod_ab = np.dot(amd, bmd)
+        prod_se = np.dot(smd, emd)
 
         if prod_ab < 2 and prod_se < 2:
             result = False
             break
 
     return result
+
+
+def count_files(name):
+    files = os.listdir('./Images')
+    a = 0
+    for f in files:
+        print(f)
+        if f[:len(name)] == name:
+            a += 1
+
+    return a
 
 
 def update(i):
@@ -331,6 +352,14 @@ def update(i):
             particles[k].position.append(new_particle_position)
 
             if goal_check(particles[k]):
+
+                for p in particles:
+                    print(p.position[-1][0])
+                    ax1.plot(p.position[-1][0], p.position[-1][1], 'o', color='black', markersize=6)
+                ax1.plot(particles[k].position[-1][0], particles[k].position[-1][1], 'o', color='yellow', markersize=6)
+
+                if not (goal_reached):
+                    fig.savefig('Images/' + tstamp + '/APF_PSO.png', bbox_inches=extent.expanded(1.2, 1.2))
                 goal_reached = True
                 pathParticleID = k
                 pathFindTime = i + 1
@@ -356,30 +385,39 @@ def update(i):
             vS = np.array(vStart)
             vE = np.array(vEnd)
 
-            ax1.plot([vS[-1, 0], vE[-1, 0]], [vS[-1, 1], vE[-1, 1]], 'r-', lw=1)
+            ax1.plot([vS[-1, 0], vE[-1, 0]], [vS[-1, 1], vE[-1, 1]], 'r-', lw=0.5)
 
             if not (visible(startPoint, currentPoint)):
-                ax1.plot([vS[-1, 0], vE[-1, 0]], [vS[-1, 1], vE[-1, 1]], 'g-', lw=3)
+                ax1.plot([vS[-1, 0], vE[-1, 0]], [vS[-1, 1], vE[-1, 1]], 'g-', lw=2)
                 segments.append([startPoint, currentPoint])
                 startPoint = currentPoint
                 segCount += 1
 
+            if t == 80:
+                fig.savefig('Images/' + tstamp + '/Visible.png', bbox_inches=extent.expanded(1.2, 1.2))
+
         if t == len(path):
-            print("Total Segments:",len(segments))
+            print("Total Segments:", len(segments))
             segments.append([startPoint, goal[:2]])
             for s, e in segments:
                 ax1.plot([s[0], e[0]], [s[1], e[1]], 'b-', lw=3)
 
+            fig.savefig('Images/' + tstamp + '/FinalPath.png', bbox_inches=extent.expanded(1.2, 1.2))
+            np.savetxt('Residuals/' + tstamp + '/APF_PSO_Residual.csv', np.asarray(error)/1000, delimiter=', ')
+
         return lines[0], line2, tuple(guides)
+
 
 def draw_circ_obs():
     for o in obstacles:
-        circle = plt.Circle((o[0], o[1]), o[2], color='r')
+        circle = plt.Circle((o[0], o[1]), o[2], color='red')
         ax1.add_artist(circle)
+
 
 def draw_line_obs():
     for o in line_obstacles:
         ax1.plot([o[0], o[2]], [o[1], o[3]], 'g-', lw=2)
+
 
 if __name__ == "__main__":
     # global fig
@@ -407,12 +445,10 @@ if __name__ == "__main__":
     u = ((X - goal[0]) ** 2) * 10 + 1
     v = ((Y - goal[1]) ** 2) * 10 + 1
 
-    ax1.quiver(X, Y, u, v, color='y', lw=1)
-
+    ax1.quiver(X, Y, u, v, color='green', lw=1)
 
     # draw_line_obs()
     draw_circ_obs()
-
 
     goalCircle = plt.Circle((goal[0], goal[1]), goal[2], color='black')
     ax1.add_artist(goalCircle)
@@ -425,3 +461,4 @@ if __name__ == "__main__":
     anim = FuncAnimation(fig, update, blit=False, frames=n_iterations, interval=interval, repeat=False)
     plt.show()
 
+    # print(count_files("APF_PSO_Visible"))
